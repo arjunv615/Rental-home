@@ -183,6 +183,21 @@ if (defined('JETPACK__VERSION')) {
 
 
 
+add_filter( 'wpcf7_validate', 'email_already_in_db', 10, 2 );
+
+function email_already_in_db ( $result, $tags ) {
+    // retrieve the posted email
+    $form  = WPCF7_Submission::get_instance();
+    $email = $form->get_posted_data('your-email');
+    // if already in database, invalidate
+    if( email_exists( $email ) ) // email_exists is a WP function
+        $result->invalidate('your-email', 'A form submission with this email address already exists, please reach out admin @sivakumar.');
+    // return the filtered value
+    return $result;
+}
+
+
+
 // Hook into Contact Form 7 submission
 function create_user_and_post_from_contact_form7($form)
 {
@@ -196,7 +211,26 @@ function create_user_and_post_from_contact_form7($form)
 
         // Get the user data
         $email = sanitize_email($posted_data['your-email']);
-        $first_name = sanitize_text_field($posted_data['first-name']);
+
+		if (email_exists($email)) {
+            // Email already exists, display an error message
+            $error_message = 'A form submission with this email address already exists please Reach out admin @sivakumar.';
+            $validation_error = array(
+                'your-email' => $error_message,
+            );
+
+            // Set the form submission as invalid
+            $submission->set_status('validation_failed');
+            $submission->set_response($validation_error);
+
+            // Prevent further processing
+            $form->skip_mail = true;
+
+			return;
+        }
+        
+		
+		$first_name = sanitize_text_field($posted_data['first-name']);
         $phone_number = sanitize_text_field($posted_data['tel-761']);
         $dob = sanitize_text_field($posted_data['date-665']);
         $age = sanitize_text_field($posted_data['number-645']);
@@ -578,6 +612,7 @@ function fetch_user_data_callback()
             /* Adjust the height as needed */
         }
     </style>';
+	$table_html .= '<h1>' .$year . ' Payment Details</h1>';
 	$table_html .= '<h3>' . __('Payment Information', 'text-domain') . '</h3>';
 	$table_html .= '<table class="custom-profile-table">
         <tr>
@@ -588,6 +623,7 @@ function fetch_user_data_callback()
 		foreach($months_data as $data=>$data_key){
 			foreach($data_key as $rent_data){
 				if($data_key['year'] == $year ){
+					$title_year = $data_key['year'];
 				foreach ($rent_data as $month => $value) {
 
 					
